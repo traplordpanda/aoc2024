@@ -42,7 +42,7 @@ auto convert_line(std::string_view sv) -> std::expected<std::tuple<int, int>, pa
 
 auto check_order(std::map<int, std::set<int>> &order_rules, const std::vector<int> &order) -> bool {
     std::print("numbers: ");
-    std::ranges::for_each(order, [](auto num) { std::print("{}, ", num); });
+    std::ranges::for_each(order, [](auto num) { std::print("{} ", num); });
     std::println();
 
     for (auto i = 0; i < order.size(); i++) {
@@ -56,6 +56,21 @@ auto check_order(std::map<int, std::set<int>> &order_rules, const std::vector<in
         }
     }
     return true;
+}
+
+auto fix_order(std::map<int, std::set<int>> &order_rules, std::vector<int> &order) -> void {
+    for (auto i = 0; i < order.size(); i++) {
+        auto v = std::ranges::views::drop(order, i);
+        auto check = std::views::take(v, 1);
+        for (auto num : std::ranges::views::drop(v, 1)) {
+            if (not(order_rules[check.front()].contains(num))) {
+                std::swap(order[i], order[i + 1]);
+            }
+        }
+    }
+    if (not(check_order(order_rules, order))) {
+        fix_order(order_rules, order);
+    }
 }
 
 int main() {
@@ -98,12 +113,18 @@ int main() {
                         }) |
                         std::ranges::to<std::vector>();
             if (not nums.empty()) {
-                if (check_order(order_rules, nums)) {
+                if (not(check_order(order_rules, nums))) {
+                    fix_order(order_rules, nums);
+                    std::print("Fixed order: ");
+                    std::ranges::for_each(nums, [](auto num) { std::print("{} ", num); });
                     auto middle = nums[nums.size() / 2];
+                    std::println("Middle: {}", middle);
                     total += middle;
+                    std::println();
                 }
             }
         }
     }
+    std::println("Total: {}", total);
     return 0;
 }
