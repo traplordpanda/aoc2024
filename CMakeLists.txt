@@ -20,3 +20,6 @@ add_executable(day3_2 day3_2.cpp)
 add_executable(day4 day4.cpp)
 
 add_executable(day4_2 day4_2.cpp)
+
+add_executable(day5 day5.cpp)
+
