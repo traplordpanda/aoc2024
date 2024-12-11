@@ -6,6 +6,7 @@
 #include <sstream>
 #include <string_view>
 #include <vector>
+#include <set>
 
 using namespace std::string_view_literals;
 
@@ -16,6 +17,11 @@ struct pos {
     int x;
     int y;
     auto operator<=>(const pos &) const = default;
+};
+
+struct posx {
+    pos p;
+    direction dir;
 };
 
 constexpr auto dirchars = std::array{'^', '>', 'v', '<'};
@@ -71,10 +77,10 @@ struct board {
 
     board(std::string_view in_sv) {
         lines = in_sv | std::views::split('\n')
-                    | std::views::transform([](auto sv) { return std::string(sv.begin(), sv.end()); })
-                    | std::ranges::to<std::vector>();
-        width = (int)lines[0].size();
-        height = (int)lines.size();
+                      | std::views::transform([](auto sv) { return std::string(sv.begin(), sv.end()); })
+                      | std::ranges::to<std::vector>();
+        width = static_cast<int>(lines[0].size());
+        height = static_cast<int>(lines.size());
 
         // Find guard start
         for (int y = 0; y < height; y++) {
@@ -90,9 +96,16 @@ struct board {
         }
     }
 
-    auto is_obstacle(int x, int y) const -> bool {
+    auto is_valid(int x, int y) const -> bool {
         if (y < 0 || y >= height) return false;
         if (x < 0 || x >= width) return false;
+        return true;
+    }
+
+    auto is_obstacle(int x, int y) const -> bool {
+        if (not(is_valid(x, y))) {
+            return false;
+        }
         return lines[y][x] == '#';
     }
 
@@ -106,32 +119,46 @@ struct board {
         return false;
     }
 
-    // Run the guard simulation on the current board state
-    // Return true if a loop is detected
-    auto run_simulation(pos start_p, char start_c) const -> bool {
-        guard local_guard(start_p, start_c);
+    auto move_guard() -> void {
+        
+    }
 
-        // Track visited states: (pos, direction)
+    auto print_board() {
+        for (auto &line : lines) {
+            std::println("{}", line);
+        }
+    }
+
+    auto run_with_obstacle(int x, int y) -> bool {
+        auto debug = false;
+        if (x == 87 && y == 44) {
+            debug = true;
+        }
+        auto initial_c = lines[y][x];
+        lines[y][x] = '#';
         std::set<std::pair<pos, direction>> visited;
-        visited.insert({local_guard.p, local_guard.dir});
-
-        while (local_guard.p.x >= 0 && local_guard.p.x < width &&
-               local_guard.p.y >= 0 && local_guard.p.y < height) {
-            // If obstacle ahead, turn right
-            if (obstacle_ahead(local_guard.p.x, local_guard.p.y, local_guard.dir)) {
-                local_guard.change_direction();
+        auto initial_pos = g.p;
+        auto initial_dir = g.dir;
+        while (is_valid(g.p.x, g.p.y)) {
+            auto obs_count = 0;
+            if (obstacle_ahead(g.p.x, g.p.y, g.dir)) {
+                g.change_direction();
             } else {
-                // Move forward
-                local_guard.move();
-                // Check if this state is already visited
-                if (visited.contains({local_guard.p, local_guard.dir})) {
-                    // Loop detected
-                    return true;
-                }
-                visited.insert({local_guard.p, local_guard.dir});
+                visited.insert({g.p, g.dir});
+                g.move();
+            }
+            if (visited.contains({g.p, g.dir})) {
+                lines[y][x] = initial_c;
+                g.p = initial_pos;
+                g.dir = initial_dir;
+                return true;
             }
         }
-        return false; // Guard left the map, no loop
+
+        lines[y][x] = initial_c;
+        g.p = initial_pos;
+        g.dir = initial_dir;
+        return false;
     }
 };
 
@@ -147,32 +174,20 @@ int main() {
     file.close();
 
     auto input = data.str();
-    auto original_board = board(std::string_view(input));
+    auto b = board(std::string_view(input));
+
 
     int loop_count = 0;
-
-    // We'll try placing an obstacle in every '.' cell except the guard's start
-    for (int y = 0; y < original_board.height; y++) {
-        for (int x = 0; x < original_board.width; x++) {
-            // Can't place at guard start
-            if (x == original_board.start_pos.x && y == original_board.start_pos.y) continue;
-
-            // Only place obstacle in '.' spots
-            if (original_board.lines[y][x] == '.') {
-                // Copy board
-                board test_board = original_board;
-                // Place new obstacle
-                test_board.lines[y][x] = '#';
-
-                // Run simulation on modified board
-                bool loop = test_board.run_simulation(original_board.start_pos, original_board.start_dir_char);
-                if (loop) {
+    for (int y = 0; y < b.height; y++) {
+        for (int x = 0; x < b.width; x++) {
+            if (x == b.start_pos.x && y == b.start_pos.y) continue;
+            if (b.lines[y][x] == '.') {
+                if (b.run_with_obstacle(x,y)) {
                     loop_count++;
                 }
             }
         }
     }
-
     std::println("Number of positions that cause a loop: {}", loop_count);
     return 0;
 }
