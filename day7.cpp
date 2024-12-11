@@ -1,14 +1,14 @@
 #include <expected>
-#include <algorithm>
 #include <fstream>
 #include <print>
 #include <ranges>
 #include <sstream>
 #include <string_view>
 #include <vector>
-#include <numeric>
 #include <cmath>
 #include <functional>
+#include <queue>
+#include <variant>
 
 using namespace std::string_view_literals;
 
@@ -32,7 +32,19 @@ auto convert_line(std::string_view sv) -> std::expected<std::vector<int>, parse_
     return rdigits;
 }
 
-std::array<std::pair<char, std::function<int(int,int)>>, 2> ops = {{
+using int_functor = std::function<int(int,int)>;
+
+/*
+  represents an arithmetic expression i.e. 1+2*3
+  q   = 1 2 3
+  ops = + * 
+*/
+struct int_operation {
+    std::queue<int> q;
+    std::vector<std::variant<std::plus<int>, std::multiplies<int>>> int_ops;    
+};
+
+std::array<std::pair<char, int_functor>, 2> ops = {{
     {'+', std::plus<int>()},
     {'*', std::multiplies<int>()}
 }};
@@ -68,19 +80,22 @@ int main() {
                 for (auto num : after_first) {
                     std::print("{} ", num); 
                 }
-
+                std::println();
+                auto total = 0;
                 // masking for lower bit for all combinations 
                 for (auto mask = 0; mask < (1 << (after_first.size() - 1)); ++mask) {
-                    for (auto i = 0; i < (after_first.size() - 1); ++i) {
+                    auto final = 0;
+                    std::string char_r;
+                    for (auto i = 0; i < (after_first.size()); ++i) {
                         auto lower_bit = (mask << i) & 1;
                         auto c = std::get<0>(ops[lower_bit]);
                         auto functor = std::get<1>(ops[lower_bit]);
                         auto first = after_first[i];
-                        auto second = after_first[i + 1];
-                        auto result  = functor(first, second);
-                        std::println("{} {} {} = {}", first, c, second, result);
-
+                        //auto result  = functor(first, second);
+                        char_r += std::to_string(first);
+                        char_r += c;
                     } 
+                    std::println("final result {}", char_r);
                 }
                 
             }
