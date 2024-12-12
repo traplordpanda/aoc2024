@@ -108,33 +108,39 @@ int solve_puzzle() {
     return 0;
 }
 /*
-input: 3 + 4 * 3 + 7:w
+input: 3 + 4 * 3 + 7
 
 output:
 ops: 
 
 input: 3
+
 output: 3
 ops:
 
 input: +
+
 output: 3
 ops: + 
 
 input: 4
+
 output: 3 4 
 ops: +
 
 input:  *
+
 output: 3 4 
 ops: + *
 
 input:  3
+
 output: 3 4 3 
 ops: + *
 
 input:  +
-output: 3 4 3 + * 
+
+output: 3 4 3 * + 
 ops: +
 
 input: 7
@@ -159,63 +165,36 @@ total= 2 + 4 = 6
 
 */
 
-
-/*
-input: 3 + 4 * 3 + 7
-output:
-total: 0
-
-lhs: 3
-op: plus
-rhs: 4
-lookahead: mult
-output: 3
-total: 0
-
-lhs: 4
-op: mult
-rhs: 3
-lookahead: plus
-output: 3
-total: 12
-
-lhs: 3
-op: plus
-rhs: 7
-lookahead: end
-output: 3
-total: 22
-*/
-
-
 int main() {
     const auto il = std::array<op_or_int, 7>{3, plus(), 4, mult(), 3, plus(), 7};
     auto input = std::queue<op_or_int>(il.begin(), il.end());
     std::queue<op_or_int> output;
     std::stack<plus_or_mult> ops;
-    auto total = 0;
-    auto precendence = 0;
-    auto lhs = input.front();
-    input.pop();
     while (!input.empty()) {
-        auto op = input.front();
-        input.pop();
-        auto rhs = input.front();
-        input.pop();
-        auto lookahead = input.front();
-        using T = std::decay<decltype(op)>;
-        using Lookahead = std::decay<decltype(lookahead)>;
-        if constexpr (std::is_same_v<T, mult>) {
-            total += std::get<mult>(op)(std::get<int>(lhs), std::get<int>(rhs));
+        auto op_int = input.front();
+        using T = std::decay<decltype(op_int)>;
+        // always push integers
+        if constexpr (std::is_same_v<T, int>) {
+            output.push(op_int);
         }
-        if constexpr (std::is_same_v<T, plus>) {
-            if constexpr (std::is_same_v<Lookahead, plus>) {
-                total += std::get<int>(lhs) + std::get<int>(rhs);
+        // if we have a plus or mult, we need to check the stack
+        if constexpr (std::is_same_v<T, plus_or_mult>) {
+            // always push if variant is mult
+            if (std::holds_alternative<mult>(op_int)) {
+                ops.push(std::get<mult>(op_int));
             } else {
-                output.push(lhs);
-                output.push(plus());
-                output.push(rhs);
+            // if we have a plus, we need to check the stack
+                if (ops.empty()) {
+                // empty always push
+                    ops.push(std::get<plus>(op_int));
+                } else {
+                    auto top = ops.top();
+                    if (std::holds_alternative<plus>(top)) {
+                        output.push(std::get<plus>(top));
+                        ops.pop();
+                    }
             }
         }
+        input.pop();
     }
 }
