@@ -30,6 +30,15 @@ auto convert_line(std::string_view sv) -> std::vector<std::int64_t> {
     return rdigits;
 }
 
+auto concat_int64(std::int64_t first, std::int64_t second) -> std::int64_t {
+    auto size = 1;
+    auto temp = second;
+    while (temp > 0) {
+        temp /= 10;
+        size = size * 10;
+    }
+    return size * first + second;
+}
 // line format 3267: 81 40 27
 // 3267 is the first number and the rest are the numbers to evaluate
 // the first number is the expected result, the rest is the combination of numbers to evaluate
@@ -43,15 +52,17 @@ auto parse_lines(std::string_view line) -> std::expected<std::int64_t, parse_err
     auto check = nums[0];
     auto after_first = std::ranges::subrange(nums.begin() + 1, nums.end());
     if (nums.size() > 1) {
-        auto combos = (1 << (after_first.size() - 1));
-        for (auto mask = 0; mask < (1 << (after_first.size() - 1)); ++mask) {
+        auto combos = pow(3, after_first.size() - 1);
+        for (auto mask = 0; mask < combos; ++mask) {
             std::int64_t temp = after_first[0];
             for (int i = 1; i < after_first.size(); i++) {
-                auto use_mult = ((mask >> (i - 1)) & 1);
-                if (!use_mult) {
+                auto switcher = (mask / static_cast<int>(std::pow(3, i - 1))) % 3;
+                if (switcher == 0) {
                     temp += after_first[i];
-                } else {
+                } else if (switcher == 1) {
                     temp *= after_first[i];
+                } else if (switcher == 2) {
+                    temp = concat_int64(temp, after_first[i]);
                 }
             }
             if (temp == check) {

@@ -31,3 +31,5 @@ add_executable(day6_2 day6_2.cpp)
 
 add_executable(day7 day7.cpp)
 
+add_executable(day7_2 day7_2.cpp)
+
